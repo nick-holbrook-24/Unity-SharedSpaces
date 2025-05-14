@@ -1,27 +1,20 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.unity3d.player"
-          xmlns:tools="http://schemas.android.com/tools">
-
-	<application>
-		<activity android:name="com.unity3d.player.UnityPlayerActivity"
-				  android:theme="@style/UnityThemeSelector">
-			<intent-filter>
-				<action android:name="android.intent.action.MAIN" />
-				<category android:name="android.intent.category.LAUNCHER" />
-			</intent-filter>
-			<meta-data android:name="unityplayer.UnityActivity"    android:value="true" />
-			<meta-data android:name="unityplayer.SkipPermissionsDialog" android:value="true" />
-		</activity>
-
-		<!-- Add this line so Oculus entitlements check your real App ID -->
-		<meta-data
-			android:name="com.oculus.platform.APP_ID"
-			android:value="10068527899873733" />
-	</application>
-
-	<!-- (Optional) you can add Oculus VR feature checks here if you want -->
-	<!--
-  <uses-feature android:name="android.hardware.vr.high_performance" android:required="true" />
-  -->
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.unity3d.player" xmlns:tools="http://schemas.android.com/tools">
+  <application android:label="@string/app_name" android:icon="@mipmap/app_icon" android:allowBackup="false">
+    <activity android:name="com.unity3d.player.UnityPlayerActivity" android:theme="@style/UnityThemeSelector">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+        <category android:name="com.oculus.intent.category.VR" />
+      </intent-filter>
+      <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+      <meta-data android:name="unityplayer.SkipPermissionsDialog" android:value="true" />
+      <meta-data android:name="com.oculus.vr.focusaware" android:value="true" />
+    </activity>
+    <meta-data android:name="com.oculus.platform.APP_ID" android:value="10068527899873733" />
+    <meta-data android:name="com.oculus.ossplash.background" android:value="black" />
+    <meta-data android:name="com.oculus.telemetry.project_guid" android:value="139202e7-0489-4f37-87bb-30b9aa0433be" />
+    <meta-data android:name="com.oculus.supportedDevices" android:value="quest2|questpro|quest3|quest3s" />
+  </application>
+  <uses-feature android:name="android.hardware.vr.headtracking" android:version="1" android:required="true" />
 </manifest>

@@ -3845,10 +3845,6 @@ PrefabInstance:
       propertyPath: GlobalObjectIdHash
       value: 812281260
       objectReference: {fileID: 0}
-    - target: {fileID: 763209592708429504, guid: 22ae545d2d2491644b2997d29458917e, type: 3}
-      propertyPath: InScenePlacedSourceGlobalObjectIdHash
-      value: 1003584837
-      objectReference: {fileID: 0}
     - target: {fileID: 1779637853318244834, guid: 22ae545d2d2491644b2997d29458917e, type: 3}
       propertyPath: m_Name
       value: Ambient_Color_Manager
@@ -3892,10 +3888,6 @@ PrefabInstance:
     - target: {fileID: 2580877311789461726, guid: 22ae545d2d2491644b2997d29458917e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4536416431457462512, guid: 22ae545d2d2491644b2997d29458917e, type: 3}
-      propertyPath: lerpFactor
-      value: 0.087
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

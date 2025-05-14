@@ -181,24 +181,31 @@ public class SharedSpacesApplication : MonoBehaviour
             return;
         }
 
-            Debug.Log("Oculus Platform SDK initialized successfully");
+            Debug.Log("Unity - Oculus Platform SDK initialized successfully");
 
-        Entitlements.IsUserEntitledToApplication().OnComplete(msg =>
-        {
-            if (msg.IsError)
-            {
-                LogError("You are not entitled to use this app", msg.GetError());
-                return;
-            }
+        //Entitlements.IsUserEntitledToApplication().OnComplete(msg =>
+        //{
+        //    if (msg.IsError)
+        //    {
+        //        LogError("You are not entitled to use this app", msg.GetError());
+        //        return;
+        //    }
 
-            launchType = ApplicationLifecycle.GetLaunchDetails().LaunchType;
+        //    launchType = ApplicationLifecycle.GetLaunchDetails().LaunchType;
 
-            GroupPresence.SetJoinIntentReceivedNotificationCallback(OnJoinIntentReceived);
-            GroupPresence.SetInvitationsSentNotificationCallback(OnInvitationsSent);
+        //    GroupPresence.SetJoinIntentReceivedNotificationCallback(OnJoinIntentReceived);
+        //    GroupPresence.SetInvitationsSentNotificationCallback(OnInvitationsSent);
 
-            Users.GetLoggedInUser().OnComplete(OnLoggedInUser);
-        });
-        
+        //    Users.GetLoggedInUser().OnComplete(OnLoggedInUser);
+        //});
+
+        launchType = ApplicationLifecycle.GetLaunchDetails().LaunchType;
+
+        GroupPresence.SetJoinIntentReceivedNotificationCallback(OnJoinIntentReceived);
+        GroupPresence.SetInvitationsSentNotificationCallback(OnInvitationsSent);
+
+        Users.GetLoggedInUser().OnComplete(OnLoggedInUser);
+
         // Handle the user clicking the AUI button for reports
         AbuseReport.SetReportButtonPressedNotificationCallback(OnReportButtonIntentNotif);
     }

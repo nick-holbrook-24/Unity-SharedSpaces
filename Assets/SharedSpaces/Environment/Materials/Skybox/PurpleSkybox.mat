@@ -88,7 +88,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _AmplFactor: 1
-    - _AtmosphereThickness: 1
+    - _AtmosphereThickness: 0.96
     - _BottomExponent: 4
     - _BumpScale: 1
     - _Cutoff: 0.5
@@ -97,7 +97,7 @@ Material:
     - _Exponent: 1
     - _Exponent1: 26
     - _Exponent2: 2.32
-    - _Exposure: 1.2
+    - _Exposure: 1.24
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
@@ -132,10 +132,10 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _FirstColor: {r: 1, g: 1, b: 1, a: 1}
     - _GradientDirection: {r: 0, g: 1, b: 0, a: 0}
-    - _GroundColor: {r: 0.11372549, g: 0, b: 0.16078432, a: 1}
+    - _GroundColor: {r: 0.14985752, g: 0.13287376, b: 0.4082977, a: 0.64}
     - _HorizonColor: {r: 0.7490196, g: 0.7019608, b: 0.8470589, a: 1}
     - _SecondColor: {r: 0.5058824, g: 0.5058824, b: 0.5058824, a: 1}
-    - _SkyTint: {r: 0.29411766, g: 0, b: 0.50980395, a: 1}
+    - _SkyTint: {r: 0.23415238, g: 0.20761524, b: 0.63796514, a: 1}
     - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
     - _TopColor: {r: 0.49803925, g: 0.4431373, b: 0.57254905, a: 1}
     - _UpVector: {r: 0, g: 1, b: 0, a: 0}
