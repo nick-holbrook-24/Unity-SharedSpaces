@@ -490,6 +490,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 6697775241634212109, guid: 7b566583b32ed60478be49846202ce86, type: 3}
+      propertyPath: m_ClearFlags
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6697775241634212109, guid: 7b566583b32ed60478be49846202ce86, type: 3}
+      propertyPath: m_BackGroundColor.b
+      value: 0.7106918
+      objectReference: {fileID: 0}
+    - target: {fileID: 6697775241634212109, guid: 7b566583b32ed60478be49846202ce86, type: 3}
+      propertyPath: m_BackGroundColor.g
+      value: 0.64031845
+      objectReference: {fileID: 0}
+    - target: {fileID: 6697775241634212109, guid: 7b566583b32ed60478be49846202ce86, type: 3}
+      propertyPath: m_BackGroundColor.r
+      value: 0.54307574
+      objectReference: {fileID: 0}
     - target: {fileID: 6697775241635718865, guid: 7b566583b32ed60478be49846202ce86, type: 3}
       propertyPath: m_RootOrder
       value: 6
@@ -1155,7 +1171,7 @@ SceneRoots:
   - {fileID: 378370039}
   - {fileID: 1248316276}
   - {fileID: 2146698104020431626}
-  - {fileID: 1512122406}
-  - {fileID: 387918599}
-  - {fileID: 1795584431}
   - {fileID: 6008307872512659829}
+  - {fileID: 1795584431}
+  - {fileID: 387918599}
+  - {fileID: 1512122406}

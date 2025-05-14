@@ -6,6 +6,8 @@ using Unity.Netcode;
 using Oculus.Platform;
 using System.Collections;
 using UnityEngine;
+using Oculus.Platform.Models;
+
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -179,7 +181,7 @@ public class SharedSpacesApplication : MonoBehaviour
             return;
         }
 
-        Debug.Log("Oculus Platform SDK initialized successfully");
+            Debug.Log("Oculus Platform SDK initialized successfully");
 
         Entitlements.IsUserEntitledToApplication().OnComplete(msg =>
         {
