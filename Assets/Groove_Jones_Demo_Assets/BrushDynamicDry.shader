@@ -2,20 +2,19 @@
 {
     Properties
     {
+        _MainTex     ("MainTex", 2D)      = "white" {}
         _Color       ("Brush Color", Color) = (1,1,1,1)
-        _MainTex     ("Main Texture", 2D)  = "white" {}
-        _DryTime     ("Time When Dry", Float) = 0
-        _DryDuration ("Dry Duration (s)", Float) = 2
-        _Amplitude   ("Wobble Amplitude", Float) = 0.05
-        _Frequency   ("Wobble Frequency", Float) = 20
+        _StartTime   ("Stroke Start Time", Float) = 0
+        _DryDuration ("Dry Duration (s)", Float)   = 2
+        _Amplitude   ("Wobble Amp", Float)         = 0.05
+        _Frequency   ("Wobble Freq", Float)        = 20
+        _FadeAlpha   ("Fade Alpha", Range(0,1))    = 1
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "Queue"="Transparent" }
+        Tags { "Queue"="Transparent" "RenderType"="Transparent" }
+        Cull Off ZWrite Off Blend SrcAlpha OneMinusSrcAlpha
         LOD 100
-        Cull Off
-        ZWrite Off
-        Blend SrcAlpha One
 
         Pass
         {
@@ -26,53 +25,33 @@
 
             sampler2D _MainTex;
             float4   _Color;
-            float    _DryTime;
+            float    _StartTime;
             float    _DryDuration;
             float    _Amplitude;
             float    _Frequency;
+            float    _FadeAlpha;
 
-            struct appdata
-            {
-                float4 vertex   : POSITION;
-                float2 uv       : TEXCOORD0;
-                float3 normal   : NORMAL;
-            };
-
-            struct v2f
-            {
-                float4 pos      : SV_POSITION;
-                float2 uv       : TEXCOORD0;
-                float3 worldPos: TEXCOORD1;
-                float3 normal  : TEXCOORD2;
-            };
+            struct appdata { float4 vertex:POSITION; float3 normal:NORMAL; float2 uv:TEXCOORD0; };
+            struct v2f    { float4 pos:SV_POSITION; float2 uv:TEXCOORD0; };
 
             v2f vert(appdata v)
             {
                 v2f o;
-                // Compute world position
                 float3 worldP = mul(unity_ObjectToWorld, v.vertex).xyz;
-
-                // How much time left until dry (clamped 0→1)
-                float t = (_DryTime - _Time.y) / _DryDuration;
-                t = saturate(t);
-
-                // Wobble offset along the normal
-                float wobble = sin((_Time.y * _Frequency) + dot(worldP, float3(12,78,34))) 
+                float t = saturate(1 - ( (_Time.y - _StartTime) / _DryDuration ));
+                float wobble = sin((_Time.y * _Frequency) + dot(worldP, float3(12,78,34)))
                              * _Amplitude * t;
-
                 worldP += v.normal * wobble;
-
-                o.pos       = UnityObjectToClipPos(float4(worldP,1));
-                o.uv        = v.uv;
-                o.worldPos  = worldP;
-                o.normal    = v.normal;
+                o.pos = UnityObjectToClipPos(float4(worldP,1));
+                o.uv  = v.uv;
                 return o;
             }
 
             fixed4 frag(v2f i) : SV_Target
             {
-                fixed4 tex = tex2D(_MainTex, i.uv) * _Color;
-                return tex;
+                fixed4 col = tex2D(_MainTex, i.uv) * _Color;
+                col.a *= _FadeAlpha;
+                return col;
             }
             ENDCG
         }

@@ -1,52 +1,58 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
+﻿// Copyright (c) Facebook, Inc. and its affiliates.
 // Use of the material below is subject to the terms of the MIT License
 // https://github.com/oculus-samples/Unity-SharedSpaces/tree/main/Assets/SharedSpaces/LICENSE
 
 using Unity.Netcode;
 using Oculus.Platform;
-using System.Collections;
 using UnityEngine;
+using System.Collections;
 using Oculus.Platform.Models;
-
 
 #if UNITY_EDITOR
 using UnityEditor;
-
-[InitializeOnLoad]
-public static class SharedSpacesTelemetry
-{
-    static SharedSpacesTelemetry()
-    {
-        Collect();
-    }
-    static void Collect(bool force = false)
-    {
-        if (SessionState.GetBool("OculusTelemetry-module_loaded-SharedSpaces", false) == false)
-        {
-            OVRPlugin.SetDeveloperMode(OVRPlugin.Bool.True);
-            OVRPlugin.SendEvent("module_loaded", "Unity-SharedSpaces", "integration");
-            SessionState.SetBool("OculusTelemetry-module_loaded-SharedSpaces", true);
-        }
-    }
-}
 #endif
 
 public class SharedSpacesApplication : MonoBehaviour
 {
-
+    [Header("Core Components")]
+    [Tooltip("Handles Photon & Netcode setup")]
     public SharedSpacesNetworkLayer networkLayer;
+    [Tooltip("Handles scene loading transitions")]
     public SharedSpacesSceneLoader sceneLoader;
+    [Tooltip("Spawns session & player objects")]
     public SharedSpacesSpawner spawner;
+    [Tooltip("Voice chat integration")]
     public SharedSpacesVoip voip;
+
+    // Manages Oculus group presence state
     public SharedSpacesGroupPresenceState groupPresenceState { get; private set; }
 
     private SharedSpacesSession session;
     private LaunchType launchType;
-
     private SharedSpacesLocalPlayerState LocalPlayerState => SharedSpacesLocalPlayerState.Instance;
+
+#if UNITY_EDITOR
+    // Telemetry ping in editor only
+    [InitializeOnLoad]
+    private static class SharedSpacesTelemetry
+    {
+        static SharedSpacesTelemetry() => Collect();
+        private static void Collect()
+        {
+            const string key = "OculusTelemetry-module_loaded-SharedSpaces";
+            if (!SessionState.GetBool(key, false))
+            {
+                OVRPlugin.SetDeveloperMode(OVRPlugin.Bool.True);
+                OVRPlugin.SendEvent("module_loaded", "Unity-SharedSpaces", "integration");
+                SessionState.SetBool(key, true);
+            }
+        }
+    }
+#endif
 
     private void OnEnable()
     {
+        Debug.Log("[SSA] OnEnable");
         DontDestroyOnLoad(this);
 
         networkLayer.OnClientConnectedCallback += OnClientConnected;
@@ -58,8 +64,185 @@ public class SharedSpacesApplication : MonoBehaviour
         networkLayer.RestoreClientCallback += OnClientRestored;
     }
 
+    private void OnDisable()
+    {
+        Debug.Log("[SSA] OnDisable");
+        networkLayer.OnClientConnectedCallback -= OnClientConnected;
+        networkLayer.OnClientDisconnectedCallback -= OnClientDisconnected;
+    }
+
+    private void Start()
+    {
+        Debug.Log("[SSA] Start() called");
+        StartCoroutine(Init());
+    }
+
+    private IEnumerator Init()
+    {
+        Debug.Log("[SSA] Init() ▶️ enter coroutine");
+        float initStart = Time.time;
+
+        Debug.Log("[SSA] Calling Oculus.Core.AsyncInitialize()");
+        Core.AsyncInitialize().OnComplete(OnOculusPlatformInitialized);
+
+#if !UNITY_EDITOR && !UNITY_STANDALONE_WIN
+        Debug.Log("[SSA] Waiting for LocalPlayerState.username...");
+        float userWaitStart = Time.time;
+        yield return new WaitUntil(() =>
+        {
+            bool ready = LocalPlayerState.username != "";
+            if (!ready && Time.time - userWaitStart > 10f)
+            {
+                Debug.LogError($"[SSA] ❌ username never arrived after 10s: '{LocalPlayerState.username}'");
+                return true; // break out so you can see next step
+            }
+            return ready;
+        });
+        Debug.Log($"[SSA] ✅ Got username = '{LocalPlayerState.username}' in {Time.time - userWaitStart:F1}s");
+#else
+        launchType = LaunchType.Normal;
+#endif
+
+        Debug.Log("[SSA] launchType = " + launchType);
+        if (launchType == LaunchType.Normal)
+        {
+            Debug.Log("[SSA] Starting groupPresence.Set(\"Lobby\")");
+            groupPresenceState = new SharedSpacesGroupPresenceState();
+            StartCoroutine(groupPresenceState.Set(
+                "Lobby",
+                "Lobby-" + LocalPlayerState.applicationID,
+                "",
+                true
+            ));
+        }
+
+        Debug.Log("[SSA] Waiting for groupPresence.destination...");
+        float gpWaitStart = Time.time;
+        yield return new WaitUntil(() =>
+        {
+            bool ready = groupPresenceState != null && groupPresenceState.destination != null;
+            if (!ready && Time.time - gpWaitStart > 10f)
+            {
+                Debug.LogError("[SSA] ❌ groupPresence.destination never set after 10s");
+                return true;
+            }
+            return ready;
+        });
+        Debug.Log($"[SSA] ✅ groupPresence.destination = '{groupPresenceState.destination}' in {Time.time - gpWaitStart:F1}s");
+
+        Debug.Log($"[SSA] Loading scene '{groupPresenceState.destination}'");
+        sceneLoader.LoadScene(groupPresenceState.destination);
+        yield return new WaitUntil(() => sceneLoader.sceneLoaded);
+        Debug.Log("[SSA] ✅ sceneLoader.sceneLoaded");
+
+        string roomName = GetPhotonRoomName();
+        Debug.Log($"[SSA] networkLayer.Init('{roomName}')");
+        networkLayer.Init(roomName);
+
+        Debug.Log($"[SSA] ▶️ Init() complete in {Time.time - initStart:F1}s");
+    }
+
+    private void OnOculusPlatformInitialized(Message<PlatformInitialize> msg)
+    {
+        Debug.Log("[SSA] OnOculusPlatformInitialized callback");
+        if (msg.IsError)
+        {
+            LogError("Failed to initialize Oculus Platform SDK", msg.GetError());
+            return;
+        }
+
+        Debug.Log("[SSA] Oculus Platform SDK initialized successfully");
+        Debug.Log("[SSA] Checking entitlement");
+        Entitlements.IsUserEntitledToApplication().OnComplete(ent =>
+        {
+            Debug.Log($"[SSA] Entitlement check returned IsError={ent.IsError}");
+            if (ent.IsError)
+            {
+                LogError("You are not entitled to use this app", ent.GetError());
+                return;
+            }
+
+            launchType = ApplicationLifecycle.GetLaunchDetails().LaunchType;
+            Debug.Log("[SSA] launchType after entitlement = " + launchType);
+
+            GroupPresence.SetJoinIntentReceivedNotificationCallback(OnJoinIntentReceived);
+            GroupPresence.SetInvitationsSentNotificationCallback(OnInvitationsSent);
+
+            Debug.Log("[SSA] Calling Users.GetLoggedInUser()");
+            Users.GetLoggedInUser().OnComplete(OnLoggedInUser);
+        });
+
+        AbuseReport.SetReportButtonPressedNotificationCallback(OnReportButtonIntentNotif);
+    }
+
+    private void OnLoggedInUser(Message<User> msg)
+    {
+        Debug.Log($"[SSA] OnLoggedInUser: IsError={msg.IsError}");
+        if (msg.IsError)
+        {
+            LogError("Cannot get user info", msg.GetError());
+            return;
+        }
+
+        Debug.Log($"[SSA] Got user ID={msg.Data.ID}, fetching display name");
+        Users.Get(msg.Data.ID).OnComplete(LocalPlayerState.Init);
+    }
+
+    private void OnReportButtonIntentNotif(Message<string> msg)
+    {
+        if (!msg.IsError)
+        {
+            Debug.Log("[SSA] Report button pressed (AUI)");
+            AbuseReport.ReportRequestHandled(ReportRequestResponse.Unhandled);
+        }
+    }
+
+    private void OnJoinIntentReceived(Message<GroupPresenceJoinIntent> msg)
+    {
+        Debug.Log("[SSA] OnJoinIntentReceived");
+        Debug.Log($"    Destination: {msg.Data.DestinationApiName}");
+        Debug.Log($"    LobbyID:     {msg.Data.LobbySessionId}");
+        Debug.Log($"    MatchID:     {msg.Data.MatchSessionId}");
+        Debug.Log($"    Deeplink:    {msg.Data.DeeplinkMessage}");
+
+        string lobbyId = msg.Data.LobbySessionId;
+        if (!lobbyId.Contains("Lobby"))
+            lobbyId = "Lobby-" + lobbyId.Substring(0, 8);
+
+        if (groupPresenceState == null)
+        {
+            string finalLobby = msg.Data.DestinationApiName == "Lobby"
+                ? lobbyId
+                : "Lobby-" + LocalPlayerState.applicationID;
+
+            groupPresenceState = new SharedSpacesGroupPresenceState();
+            StartCoroutine(groupPresenceState.Set(
+                msg.Data.DestinationApiName,
+                finalLobby,
+                GetMatchSessionID(msg.Data.DestinationApiName, lobbyId),
+                true
+            ));
+        }
+        else
+        {
+            StartCoroutine(SwitchRoom(
+                msg.Data.DestinationApiName,
+                lobbyId,
+                true
+            ));
+        }
+    }
+
+    private void OnInvitationsSent(Message<LaunchInvitePanelFlowResult> msg)
+    {
+        Debug.Log("[SSA] OnInvitationsSent, count=" + msg.Data.InvitedUsers.Count);
+        foreach (var user in msg.Data.InvitedUsers)
+            Debug.Log($"    Invited: {user.DisplayName} ({user.ID})");
+    }
+
     private void OnClientConnected(ulong clientId)
     {
+        Debug.Log($"[SSA] OnClientConnected: {clientId}");
         if (NetworkManager.Singleton.IsHost)
         {
             session.DetermineFallbackHost(clientId);
@@ -68,302 +251,126 @@ public class SharedSpacesApplication : MonoBehaviour
         else if (NetworkManager.Singleton.IsClient && clientId == NetworkManager.Singleton.LocalClientId)
         {
             session = FindObjectOfType<SharedSpacesSession>();
+            var pos = (networkLayer.clientState == SharedSpacesNetworkLayer.ClientState.RestoringClient)
+                ? LocalPlayerState.transform.position
+                : SharedSpacesSpawnPoint.singleton.SpawnPosition;
+            var rot = (networkLayer.clientState == SharedSpacesNetworkLayer.ClientState.RestoringClient)
+                ? LocalPlayerState.transform.rotation
+                : SharedSpacesSpawnPoint.singleton.SpawnRotation;
 
-            if (networkLayer.clientState == SharedSpacesNetworkLayer.ClientState.RestoringClient)
-            {
-                session.RequestSpawnServerRpc(
-                    clientId,
-                    LocalPlayerState.transform.position,
-                    LocalPlayerState.transform.rotation
-                );
-            }
-            else
-            {
-                session.RequestSpawnServerRpc(
-                    clientId,
-                    SharedSpacesSpawnPoint.singleton.SpawnPosition,
-                    SharedSpacesSpawnPoint.singleton.SpawnRotation
-                );
-            }
+            session.RequestSpawnServerRpc(clientId, pos, rot);
         }
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
+        Debug.Log($"[SSA] OnClientDisconnected: {clientId}");
         session.RedetermineFallbackHost(clientId);
     }
 
     private ulong OnMasterClientSwitched()
     {
+        Debug.Log("[SSA] OnMasterClientSwitched");
         return SharedSpacesSession.fallbackHostId;
     }
 
     private void OnHostStarted()
     {
+        Debug.Log("[SSA] OnHostStarted");
         session = spawner.SpawnSession().GetComponent<SharedSpacesSession>();
-
-        NetworkObject player = spawner.SpawnPlayer(
+        var player = spawner.SpawnPlayer(
             NetworkManager.Singleton.LocalClientId,
             SharedSpacesSpawnPoint.singleton.SpawnPosition,
             SharedSpacesSpawnPoint.singleton.SpawnRotation
         );
-
         voip.StartVoip(player.transform);
     }
 
     private void OnClientStarted()
     {
-        NetworkObject player = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+        Debug.Log("[SSA] OnClientStarted");
+        var player = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
         voip.StartVoip(player.transform);
     }
 
     private void OnHostRestored()
     {
+        Debug.Log("[SSA] OnHostRestored");
         session = spawner.SpawnSession().GetComponent<SharedSpacesSession>();
-
-        NetworkObject player = spawner.SpawnPlayer(
+        var player = spawner.SpawnPlayer(
             NetworkManager.Singleton.LocalClientId,
             LocalPlayerState.transform.position,
             LocalPlayerState.transform.rotation
         );
-
         voip.StartVoip(player.transform);
     }
 
     private void OnClientRestored()
     {
-        NetworkObject player = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+        Debug.Log("[SSA] OnClientRestored");
+        var player = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
         voip.StartVoip(player.transform);
     }
 
-    private void Start()
-    {
-        StartCoroutine(Init());
-    }
-
-    private IEnumerator Init()
-    {
-        Core.AsyncInitialize().OnComplete(OnOculusPlatformInitialized);
-
-#if !UNITY_EDITOR && !UNITY_STANDALONE_WIN
-        yield return new WaitUntil(() => LocalPlayerState.username != "");
-#else
-        launchType = LaunchType.Normal;
-#endif
-
-        // start in the lobby
-        if (launchType == LaunchType.Normal)
-        {
-            groupPresenceState = new SharedSpacesGroupPresenceState();
-
-            StartCoroutine(groupPresenceState.Set(
-                    "Lobby",
-                    "Lobby-" + LocalPlayerState.applicationID,
-                    "",
-                    true
-                )
-            );
-        }
-
-        yield return new WaitUntil(() => groupPresenceState != null && groupPresenceState.destination != null);
-
-        sceneLoader.LoadScene(groupPresenceState.destination);
-        yield return new WaitUntil(() => sceneLoader.sceneLoaded);
-
-        networkLayer.Init(GetPhotonRoomName());
-    }
-
-    private void OnOculusPlatformInitialized(Message<Oculus.Platform.Models.PlatformInitialize> message)
-    {
-        if (message.IsError)
-        {
-            LogError("Failed to initialize Oculus Platform SDK", message.GetError());
-            return;
-        }
-
-            Debug.Log("Unity - Oculus Platform SDK initialized successfully");
-
-        //Entitlements.IsUserEntitledToApplication().OnComplete(msg =>
-        //{
-        //    if (msg.IsError)
-        //    {
-        //        LogError("You are not entitled to use this app", msg.GetError());
-        //        return;
-        //    }
-
-        //    launchType = ApplicationLifecycle.GetLaunchDetails().LaunchType;
-
-        //    GroupPresence.SetJoinIntentReceivedNotificationCallback(OnJoinIntentReceived);
-        //    GroupPresence.SetInvitationsSentNotificationCallback(OnInvitationsSent);
-
-        //    Users.GetLoggedInUser().OnComplete(OnLoggedInUser);
-        //});
-
-        launchType = ApplicationLifecycle.GetLaunchDetails().LaunchType;
-
-        GroupPresence.SetJoinIntentReceivedNotificationCallback(OnJoinIntentReceived);
-        GroupPresence.SetInvitationsSentNotificationCallback(OnInvitationsSent);
-
-        Users.GetLoggedInUser().OnComplete(OnLoggedInUser);
-
-        // Handle the user clicking the AUI button for reports
-        AbuseReport.SetReportButtonPressedNotificationCallback(OnReportButtonIntentNotif);
-    }
-
-    private void OnLoggedInUser(Message<Oculus.Platform.Models.User> message)
-    {
-        if (message.IsError)
-        {
-            LogError("Cannot get user info", message.GetError());
-            return;
-        }
-
-        // Workaround.
-        // At the moment, Platform.Users.GetLoggedInUser() seems to only be returning the user ID.
-        // Display name is blank.
-        // Platform.Users.Get(ulong userID) returns the display name.
-        Users.Get(message.Data.ID).OnComplete(LocalPlayerState.Init);
-    }
-    
-    // User has interacted with the AUI report button outside this app
-    private void OnReportButtonIntentNotif(Message<string> message)
-    {
-        if (!message.IsError)
-        {
-            // Inform SDK that we don't handle the request
-            AbuseReport.ReportRequestHandled(ReportRequestResponse.Unhandled);
-        }
-    }
-
-    private void OnJoinIntentReceived(Message<Oculus.Platform.Models.GroupPresenceJoinIntent> message)
-    {
-        Debug.Log("------JOIN INTENT RECEIVED------");
-        Debug.Log("Destination:       " + message.Data.DestinationApiName);
-        Debug.Log("Lobby Session ID:  " + message.Data.LobbySessionId);
-        Debug.Log("Match Session ID:  " + message.Data.MatchSessionId);
-        Debug.Log("Deep Link Message: " + message.Data.DeeplinkMessage);
-        Debug.Log("--------------------------------");
-
-        string messageLobbySessionId = message.Data.LobbySessionId;
-
-        // If true, this means lobby session ID is a 128-bit hexadecimal, which was generated automatically
-        // by a group launch link. To remain consistent, only get the first 8 hex digits.
-        if (!messageLobbySessionId.Contains("Lobby"))
-            messageLobbySessionId = "Lobby-" + message.Data.LobbySessionId.Substring(0, 8);
-
-        // no Group Presence yet:
-        // app is being launched by this join intent, either
-        // through an in-app direct invite, or through a deeplink
-        if (groupPresenceState == null)
-        {
-            string lobbySessionID = message.Data.DestinationApiName == "Lobby"
-                ? messageLobbySessionId
-                : "Lobby-" + LocalPlayerState.applicationID;
-
-            groupPresenceState = new SharedSpacesGroupPresenceState();
-
-            StartCoroutine(groupPresenceState.Set(
-                    message.Data.DestinationApiName,
-                    lobbySessionID,
-                    GetMatchSessionID(message.Data.DestinationApiName, messageLobbySessionId),
-                    true
-                )
-            );
-        }
-        // game was already running, meaning the user already has a Group Presence, and
-        // is already either hosting or a client of another host.
-        else
-        {
-            StartCoroutine(SwitchRoom(message.Data.DestinationApiName, messageLobbySessionId, true));
-        }
-    }
-
-    private void OnInvitationsSent(Message<Oculus.Platform.Models.LaunchInvitePanelFlowResult> message)
-    {
-        Debug.Log("-------INVITED USERS LIST-------");
-        Debug.Log("Size: " + message.Data.InvitedUsers.Count);
-        foreach (Oculus.Platform.Models.User user in message.Data.InvitedUsers)
-        {
-            Debug.Log("Username: " + user.DisplayName);
-            Debug.Log("User ID:  " + user.ID);
-        }
-        Debug.Log("--------------------------------");
-    }
-
-    private void LogError(string message, Oculus.Platform.Models.Error error)
-    {
-        Debug.LogError(message);
-        Debug.LogError("ERROR MESSAGE:   " + error.Message);
-        Debug.LogError("ERROR CODE:      " + error.Code);
-        Debug.LogError("ERROR HTTP CODE: " + error.HttpCode);
-    }
-
-    private IEnumerator SwitchRoom(string destination, string lobbySessionID, bool resetSpawnPoint)
-    {
-        if (resetSpawnPoint)
-            SharedSpacesSpawnPoint.Reset();
-        else
-            SharedSpacesSpawnPoint.Move(destination);
-
-        string lobbySession = destination == "Lobby"
-            ? lobbySessionID
-            : groupPresenceState.lobbySessionID;
-
-        SharedSpacesSceneLoader.Scenes destination_ = sceneLoader.scenes[destination];
-
-        sceneLoader.LoadScene(destination);
-        yield return new WaitUntil(() => sceneLoader.sceneLoaded);
-
-        yield return StartCoroutine(groupPresenceState.Set(
-                destination_.ToString(),
-                lobbySession,
-                GetMatchSessionID(destination_.ToString(), lobbySessionID),
-                true
-            )
-        );
-
-        networkLayer.SwitchPhotonRealtimeRoom(GetPhotonRoomName());
-    }
-
-    // only called locally, by owner
     public void OnPortalEnter(string portalName)
     {
+        Debug.Log("[SSA] OnPortalEnter: " + portalName);
         StartCoroutine(SwitchRoom(portalName, groupPresenceState.lobbySessionID, false));
     }
 
     public void OnExternalPortalEnter(SharedSpacesExternalPortal portal)
     {
+        Debug.Log("[SSA] OnExternalPortalEnter: " + portal.ApplicationId);
         var options = new ApplicationOptions();
-        // only add deeplink message if it's set
         if (!string.IsNullOrEmpty(portal.DeepLinkMessage))
-        {
             options.SetDeeplinkMessage(portal.DeepLinkMessage);
-        }
         options.SetDestinationApiName(portal.DestinationAPI);
-        // We join the same session reference in the application
         options.SetLobbySessionId(groupPresenceState.lobbySessionID);
         options.SetMatchSessionId(groupPresenceState.matchSessionID);
         Oculus.Platform.Application.LaunchOtherApp(portal.ApplicationId, options);
     }
 
+    private IEnumerator SwitchRoom(string destination, string lobbySessionID, bool resetSpawnPoint)
+    {
+        Debug.Log($"[SSA] SwitchRoom → {destination}");
+        if (resetSpawnPoint) SharedSpacesSpawnPoint.Reset();
+        else SharedSpacesSpawnPoint.Move(destination);
+
+        string lobby = (destination == "Lobby") ? lobbySessionID : groupPresenceState.lobbySessionID;
+        var sceneKey = sceneLoader.scenes[destination];
+
+        sceneLoader.LoadScene(destination);
+        yield return new WaitUntil(() => sceneLoader.sceneLoaded);
+
+        yield return groupPresenceState.Set(
+            sceneKey.ToString(),
+            lobby,
+            GetMatchSessionID(sceneKey.ToString(), lobbySessionID),
+            true
+        );
+
+        networkLayer.SwitchPhotonRealtimeRoom(GetPhotonRoomName());
+    }
+
     private string GetPhotonRoomName()
     {
-        return groupPresenceState.matchSessionID == ""
+        return string.IsNullOrEmpty(groupPresenceState.matchSessionID)
             ? groupPresenceState.lobbySessionID
             : groupPresenceState.matchSessionID;
     }
 
     private string GetMatchSessionID(string destination, string lobbySessionID)
     {
-        string matchSessionID = "";
+        if (destination == "Lobby") return "";
+        if (destination == "PurpleRoom") return destination;
+        return destination + lobbySessionID;
+    }
 
-        if (destination != "Lobby")
-        {
-            matchSessionID = destination == "PurpleRoom"
-                ? destination
-                : destination + lobbySessionID;
-        }
-
-        return matchSessionID;
+    private void LogError(string message, Error error)
+    {
+        Debug.LogError(message);
+        Debug.LogError($"ERROR MESSAGE:   {error.Message}");
+        Debug.LogError($"ERROR CODE:      {error.Code}");
+        Debug.LogError($"ERROR HTTP CODE: {error.HttpCode}");
     }
 }

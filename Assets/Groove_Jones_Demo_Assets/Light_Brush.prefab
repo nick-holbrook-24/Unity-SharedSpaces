@@ -106,14 +106,23 @@ LineRenderer:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
-        time: 0
-        value: 1
-        inSlope: 0
-        outSlope: 0
+        time: 0.0011961744
+        value: 0.8095239
+        inSlope: 1.2319834
+        outSlope: 1.2319834
         tangentMode: 0
         weightedMode: 0
         inWeight: 0.33333334
-        outWeight: 0.33333334
+        outWeight: 0.07844311
+      - serializedVersion: 3
+        time: 1
+        value: 0.48648643
+        inSlope: -0.89771134
+        outSlope: -0.89771134
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.097487986
+        outWeight: 0
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
