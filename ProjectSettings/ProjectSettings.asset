@@ -12,8 +12,8 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: Nick Holbrook
-  productName: Nick's Shared Spaces Demo
+  companyName: Groove Jones
+  productName: Test Meta Colocation
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -140,12 +140,10 @@ PlayerSettings:
   loadStoreDebugModeEnabled: 0
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
-  bundleVersion: 1.2.3
+  bundleVersion: 1.0.2
   preloadedAssets:
   - {fileID: 11400000, guid: 3373e5edd43cb824581b7369d30b673d, type: 2}
   - {fileID: 11400000, guid: 31617391d8a34d24981ec6aff26cd922, type: 2}
-  - {fileID: 9063536110420965024, guid: eb1fb9be53949b94982164119889ba87, type: 2}
-  - {fileID: 11400000, guid: 795ffafb602dfed43930c9717cafb655, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -166,7 +164,7 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
-    Android: com.nickholbrook.sharedspacesdemo
+    Android: com.groovejones.testmetacolocation
     Standalone: com.samples.sharedspaces
   buildNumber:
     Standalone: 0
@@ -174,7 +172,7 @@ PlayerSettings:
     iPhone: 0
     tvOS: 0
   overrideDefaultApplicationIdentifier: 1
-  AndroidBundleVersionCode: 16
+  AndroidBundleVersionCode: 4
   AndroidMinSdkVersion: 32
   AndroidTargetSdkVersion: 34
   AndroidPreferredInstallLocation: 0
@@ -269,8 +267,8 @@ PlayerSettings:
   AndroidTargetDevices: 0
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
-  AndroidKeystoreName: C:/Users/nholb/OneDrive/Documentos/Groove_Jones_Demo_Keystore.keystore
-  AndroidKeyaliasName: groove jones demo
+  AndroidKeystoreName: C:/Users/nholb/OneDrive/Documentos/Groove_Jones_Demo_Nick_Keystore.keystore
+  AndroidKeyaliasName: groove jones demo nick
   AndroidEnableArmv9SecurityFeatures: 0
   AndroidBuildApkPerCpuArchitecture: 0
   AndroidTVCompatibility: 0
