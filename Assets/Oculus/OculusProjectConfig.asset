@@ -14,23 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetDeviceTypes: 02000000030000000400000005000000
   allowOptional3DofHeadTracking: 0
-  handTrackingSupport: 0
-  handTrackingFrequency: 0
+  handTrackingSupport: 1
+  handTrackingFrequency: 1
   handTrackingVersion: 0
-  anchorSupport: 0
-  sharedAnchorSupport: 0
+  anchorSupport: 1
+  sharedAnchorSupport: 2
   renderModelSupport: 0
   trackedKeyboardSupport: 0
   bodyTrackingSupport: 0
   faceTrackingSupport: 0
   eyeTrackingSupport: 0
   virtualKeyboardSupport: 0
-  colocationSessionSupport: 0
-  sceneSupport: 0
+  colocationSessionSupport: 1
+  sceneSupport: 2
   boundaryVisibilitySupport: 0
   disableBackups: 1
   enableNSCConfig: 1
   securityXmlPath: 
+  horizonOsSdkEnabled: 0
+  minHorizonOsSdkVersion: 68
+  targetHorizonOsSdkVersion: 74
   skipUnneededShaders: 0
   enableIL2CPPLTO: 0
   removeGradleManifest: 1
@@ -38,8 +41,8 @@ MonoBehaviour:
   requiresSystemKeyboard: 0
   experimentalFeaturesEnabled: 0
   insightPassthroughEnabled: 0
-  _insightPassthroughSupport: 0
+  _insightPassthroughSupport: 1
   _processorFavor: 0
   systemSplashScreen: {fileID: 0}
   systemSplashScreenType: 0
-  _systemLoadingScreenBackground: 0
+  _systemLoadingScreenBackground: 1

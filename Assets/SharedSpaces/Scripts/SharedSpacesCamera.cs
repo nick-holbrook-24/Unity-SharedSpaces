@@ -20,7 +20,7 @@ public class SharedSpacesCamera : MonoBehaviour
         heightOffset = character.height * 1.25f;
         inputs = inputs_;
 
-        Refocus();
+        //Refocus();
     }
 
     public void Refocus()
@@ -53,9 +53,9 @@ public class SharedSpacesCamera : MonoBehaviour
 
         if (justStoppedMoving)
         {
-            Refocus();
+            //Refocus();
         }
 
-        transform.RotateAround(headPos, Vector3.up, -1.0f * inputs.orbit.x);
+        //transform.RotateAround(headPos, Vector3.up, -1.0f * inputs.orbit.x);
     }
 }

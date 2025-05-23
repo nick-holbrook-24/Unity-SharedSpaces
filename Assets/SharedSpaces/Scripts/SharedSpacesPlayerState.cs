@@ -87,7 +87,7 @@ public class SharedSpacesPlayerState : NetworkBehaviour
 
         if (!LocalPlayerState) return;
 
-        LocalPlayerState.playerCamera.Refocus();
+        //LocalPlayerState.playerCamera.Refocus();
         LocalPlayerState.OnChange += UpdateData;
         
         UpdateData();
